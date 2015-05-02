@@ -1,3 +1,4 @@
+import migrate_database
 import jchat
 import random
 import unittest
@@ -31,6 +32,11 @@ def create_user_message(msg_id, site_id, operator, message, ts = None):
 
 class JChatTest(unittest.TestCase):
 
+  def setUp(self):
+    # Print all queries to stderr.
+    migrate_database.cleanup()
+    migrate_database.migrate()
+
   def test_process_status_online(self):
     chat = jchat.JChat()
     message = create_status_message(1, "123", "op1", jchat.STATUS_TYPE_ONLINE)
@@ -39,9 +45,9 @@ class JChatTest(unittest.TestCase):
     self.assertEqual(chat.total_sites(), 1)
 
     site = chat.get_site("123")
-    self.assertEqual(site.total_operators(), 1)
+    self.assertEqual(jchat.total_operators(site), 1)
 
-    operator = site.get_operator("op1")
+    operator = jchat.get_operator(site, "op1")
     self.assertEqual(operator.status, jchat.STATUS_TYPE_ONLINE)
 
   def test_process_status_online_two_operators(self):
@@ -54,12 +60,12 @@ class JChatTest(unittest.TestCase):
     self.assertEqual(chat.total_sites(), 1)
 
     site = chat.get_site("123")
-    self.assertEqual(site.total_operators(), 2)
+    self.assertEqual(jchat.total_operators(site), 2)
 
-    op1 = site.get_operator("op1")
+    op1 = jchat.get_operator(site, "op1")
     self.assertEqual(op1.status, jchat.STATUS_TYPE_ONLINE)
 
-    op2 = site.get_operator("op2")
+    op2 = jchat.get_operator(site, "op2")
     self.assertEqual(op2.status, jchat.STATUS_TYPE_ONLINE)
 
   def test_process_status_online_then_offline(self):
@@ -74,9 +80,9 @@ class JChatTest(unittest.TestCase):
     self.assertEqual(chat.total_sites(), 1)
 
     site = chat.get_site("123")
-    self.assertEqual(site.total_operators(), 1)
+    self.assertEqual(jchat.total_operators(site), 1)
 
-    operator = site.get_operator("op1")
+    operator = jchat.get_operator(site, "op1")
     self.assertEqual(operator.status, jchat.STATUS_TYPE_OFFLINE)
 
   def test_receiving_duplicate_site_message(self):
@@ -93,7 +99,7 @@ class JChatTest(unittest.TestCase):
     self.assertEqual(chat.total_sites(), 1)
 
     site = chat.get_site("123")
-    operator = site.get_operator("op1")
+    operator = jchat.get_operator(site, "op1")
     self.assertEqual(site.last_updated, 1)
     self.assertEqual(operator.last_updated, 1)
 
@@ -107,8 +113,8 @@ class JChatTest(unittest.TestCase):
     self.assertEqual(chat.total_sites(), 1)
 
     site = chat.get_site("site123")
-    self.assertEqual(site.total_operators(), 0)
-    self.assertEqual(site.total_visitors(), 1)
+    self.assertEqual(jchat.total_operators(site), 0)
+    self.assertEqual(jchat.total_visitors(site), 1)
     self.assertEqual(site.emails, 2)
     self.assertEqual(site.messages, 0)
 
@@ -124,19 +130,10 @@ class JChatTest(unittest.TestCase):
     self.assertEqual(chat.total_sites(), 1)
 
     site = chat.get_site("site123")
-    self.assertEqual(site.total_operators(), 1)
-    self.assertEqual(site.total_visitors(), 1)
+    self.assertEqual(jchat.total_operators(site), 1)
+    self.assertEqual(jchat.total_visitors(site), 1)
     self.assertEqual(site.emails, 0)
     self.assertEqual(site.messages, 1)
-
-  def test_site_prints_correctly(self):
-    site = jchat.Site("123")
-    site.visitors = {"1": True, "2": True}
-    site.operators = {"1": jchat.Operator("1", jchat.STATUS_TYPE_ONLINE)}
-    site.emails = 50
-    site.messages = 100
-    self.assertEqual(str(site),
-        "123,messages=100,emails=50,operators=1,visitors=2")
 
 if __name__ == '__main__':
   unittest.main()

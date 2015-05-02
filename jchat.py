@@ -1,4 +1,9 @@
 import json
+import os
+
+from peewee import *
+
+db = SqliteDatabase(os.environ.get('JCHAT_DATABASE') or "test.db")
 
 # Constants
 MSG_TYPE_SITE = "status"
@@ -7,66 +12,78 @@ MSG_TYPE_MESSAGE = "message"
 STATUS_TYPE_ONLINE = "online"
 STATUS_TYPE_OFFLINE = "offline"
 
-# Represents an operator.
-#
-# Attributes:
-#   operator_id: The id of this operator.
-#   status: Whether the operator is online or offline.
-#   last_updated: The timestamp of the message that last touched this object.
-class Operator(object):
+# Base Database Model.
+class BaseModel(Model):
+  class Meta:
+    database = db
 
-  def __init__(self, operator_id, status):
-    self.operator_id = operator_id
-    self.status = status
-    self.last_updated = 0
+# Represents a message.
+class Message(BaseModel):
+  message_id = CharField(unique=True)
 
 # Represents a site.
-#
-# Attributes:
-#   site_id: ID that represents the site.
-#   messages: Number of messages sent to the site.
-#   emails: Number of emails sent to the site.
-#   operators: List of online operators of this site.
-#   visitors: List of visitors of this site.
-#   last_updated: The timestamp of the message that last touched this object.
-class Site(object):
+class Site(BaseModel):
+  site_id = CharField(unique=True)
+  messages = IntegerField(default=0)
+  emails = IntegerField(default=0)
+  last_updated = IntegerField(default=0)
 
-  def __init__(self, site_id):
-    self.site_id = site_id
-    self.messages = 0
-    self.emails = 0
-    self.operators = {}
-    self.visitors = {}
-    self.last_updated = 0
+# Represents an operator.
+class Operator(BaseModel):
+  operator_id = CharField()
+  status = CharField()
+  site = ForeignKeyField(Site, related_name='operators')
+  last_updated = IntegerField(default=0)
 
-  # Returns true if at least one operator is online for the site.
-  def is_online(self):
-    for key, op in self.operators.iteritems():
-      if op.status == STATUS_TYPE_ONLINE:
-        return True
+# Represents a visitor.
+class Visitor(BaseModel):
+  visitor_id = CharField()
+  site = ForeignKeyField(Site, related_name='visitors')
 
-    return False
+# Returns true if at least one operator is online for the site.
+def is_online(site):
+  online = (Operator.select().where(
+      (Operator.site == site.id) &
+      (Operator.status == STATUS_TYPE_ONLINE)
+    ).count())
+  return online > 0
 
-  # Return the total visitors connected to the site.
-  def total_visitors(self):
-    return len(self.visitors)
 
-  # Return the total operators connected to the site.
-  def total_operators(self):
-    return len(self.operators)
+# Return the total visitors connected to the site.
+def total_visitors(site):
+  total = (Visitor.select().where(
+      Visitor.site == site.id
+    ).count())
+  return total
 
-  # Returns an operator associated with the operator id.
-  def get_operator(self, operator_id):
-    return self.operators[operator_id]
+# Return the total operators connected to the site.
+def total_operators(site):
+    total = (Operator.select().where(
+        Operator.site == site.id
+      ).count())
+    return total
 
-  def __str__(self):
-    return "%s,messages=%s,emails=%s,operators=%s,visitors=%s" % (
-        self.site_id,
-        self.messages,
-        self.emails,
-        self.total_operators(),
-        self.total_visitors(),
-        )
+# Returns an operator associated with the operator id.
+def get_operator(site, operator_id):
+  operator = Operator.get((Operator.site == site.id) & 
+      (Operator.operator_id == operator_id))
+  return operator
+
+def site_str(site, operators, visitors):
+  return "%s,messages=%s,emails=%s,operators=%s,visitors=%s" % (
+      site.site_id,
+      site.messages,
+      site.emails,
+      operators,# site.num_operators,
+      visitors,#site.num_visitors,
+      )
+
+def all_sites():
+  sites = Site.select()
+  for site in sites:
+    operators = site.operators.count()
+    visitors = site.visitors.count()
+    yield site_str(site, operators, visitors)
 
 # Represents the state of the current chat.
 #
@@ -75,22 +92,25 @@ class Site(object):
 class JChat(object):
 
   def __init__(self):
+    db.connect()
     self.sites = {}
-    self.messages_cache = {}
 
   def print_all(self):
-    for site_id in sorted(self.sites):
-      print str(self.sites[site_id])
+    for site in all_sites():
+      print site
 
   # Processes a message. Depending on the type it either sends
   # the message to the site if the site is online or sends
   # an email otherwise.
   def process(self, message):
     message_id = message["id"]
-    if message_id in self.messages_cache:
+    try:
+      Message.get(Message.message_id == message_id)
       return
+    except DoesNotExist:
+      db_message = Message.create(message_id=message_id)
+      db_message.save()
 
-    self.messages_cache[message_id] = True
     message_type = message["type"]
     if message_type == MSG_TYPE_SITE:
       self._process_status(message)
@@ -101,11 +121,10 @@ class JChat(object):
 
   # Returns or creates a site.
   def _get_or_create_site(self, site_id):
-    if site_id in self.sites:
-      return self.sites[site_id]
-    else:
-      site = Site(site_id)
-      self.sites[site_id] = site
+    try:
+      return Site.get(Site.site_id == site_id)
+    except DoesNotExist:
+      site = Site.create(site_id=site_id, messages=0, emails=0)
       return site
 
   # Sends a message to the site if the site is online or sends an email
@@ -114,12 +133,22 @@ class JChat(object):
     site = self._get_or_create_site(message["site_id"])
 
     site.last_updated = message["timestamp"]
-    site.visitors[message["from"]] = True
-
-    if site.is_online():
+    if is_online(site):
       site.messages += 1
     else:
       site.emails +=1
+    site.save()
+
+    # Create visitor if not exists.
+    visitor_id = message["from"]
+    try:
+      visitor = Visitor.get( (Visitor.visitor_id == visitor_id) &
+          (Visitor.site == site.id)
+          )
+    except DoesNotExist:
+      visitor = Visitor.create(site=site.id, visitor_id=visitor_id)
+    visitor.save()
+
 
   # Marks a site as online/offline based on the message data.
   def _process_status(self, message):
@@ -127,20 +156,32 @@ class JChat(object):
 
     site = self._get_or_create_site(message["site_id"])
     site.last_updated = timestamp
+    site.save()
 
     # Create operator.
     operator_id = message["from"]
-    operator = Operator(operator_id, message["data"]["status"])
-    operator.last_updated = timestamp
+    status = message["data"]["status"]
+    operator = None
+    try:
+      operator = Operator.get( (Operator.site == site.id) &
+          (Operator.operator_id == operator_id)
+          )
+      operator.status = status
+    except DoesNotExist:
+      operator = Operator.create(operator_id=operator_id,
+          site=site.id,
+          status=status)
 
-    site.operators[operator_id] = operator
+    operator.last_updated = timestamp
+    operator.save()
+
 
   def get_site(self, site_id):
-    return self.sites.get(site_id)
+    site = Site.get(Site.site_id == site_id)
+    return site
 
   def total_sites(self):
-    return len(self.sites)
-
+    return Site.select().count()
 
 # Parses an input file containing a list of JSON files that
 # represent a message from either a site coming online or a client
