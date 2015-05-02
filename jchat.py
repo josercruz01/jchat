@@ -79,8 +79,8 @@ class JChat(object):
     self.messages_cache = {}
 
   def print_all(self):
-    for site in sorted(self.sites):
-      print str(site)
+    for site_id in sorted(self.sites):
+      print str(self.sites[site_id])
 
   # Processes a message. Depending on the type it either sends
   # the message to the site if the site is online or sends

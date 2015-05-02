@@ -21,7 +21,7 @@ def main():
     exit(0)
 
   chat = jchat.parse(input_file)
-  print chat
+  chat.print_all()
 
 if __name__ == "__main__":
   main()
