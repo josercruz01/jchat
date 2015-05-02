@@ -4,6 +4,20 @@ import json
 MSG_TYPE_SITE = "status"
 MSG_TYPE_MESSAGE = "message"
 
+STATUS_TYPE_ONLINE = "online"
+STATUS_TYPE_OFFLINE = "offline"
+
+# Represents an operator.
+#
+# Attributes:
+#   operator_id: The id of this operator.
+#   status: Wether the operator is online or offline.
+class Operator(object):
+
+  def __init__(self, operator_id, status):
+    self.operator_id = operator_id
+    self.status = status
+
 # Represents a site.
 #
 # Attributes:
@@ -20,6 +34,10 @@ class Site(object):
     self.emails = 0
     self.operators = {}
     self.visitors = 0
+
+  # Returns an operator associated with the operator id.
+  def get_operator(self, operator_id):
+    return self.operators[operator_id]
 
 # Represents the state of the current chat.
 #
@@ -53,7 +71,12 @@ class JChat(object):
   # Marks a site as online/offline based on the message data.
   def _process_status(self, message):
     site_id = message["site_id"]
+    operator_id = message["from"]
+    status = message["data"]["status"]
+    operator = Operator(operator_id, status)
+
     site = Site(site_id)
+    site.operators[operator_id] = operator
     self.sites[site_id] = site
 
   def get_site(self, site_id):
