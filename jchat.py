@@ -20,6 +20,13 @@ class BaseModel(Model):
 # Represents a message.
 class Message(BaseModel):
   message_id = CharField(unique=True)
+  content = TextField()
+  last_updated = IntegerField()
+
+# Represents a cache of all messages sent.
+class MessageCache(BaseModel):
+  message_id = CharField(unique=True)
+  last_updated = IntegerField()
 
 # Represents a site.
 class Site(BaseModel):
@@ -99,16 +106,33 @@ class JChat(object):
     for site in all_sites():
       print site
 
+  # Pre-processes a message. Saves it in the database to make it
+  # queryable and to sort based on timestamp.
+  def pre_process(self, message, text):
+    message_id = message["id"]
+    timestamp = message["timestamp"]
+    try:
+      db_message = Message.get( (Message.message_id == message_id) &
+          (Message.last_updated == timestamp))
+      return
+    except DoesNotExist:
+      db_message = Message.create(message_id=message_id, 
+          last_updated=timestamp,
+          content=text)
+      db_message.save()
+
   # Processes a message. Depending on the type it either sends
   # the message to the site if the site is online or sends
   # an email otherwise.
-  def process(self, message):
+  def process(self, event_message):
+    message = json.loads(event_message.content)
     message_id = message["id"]
+    timestamp = message["timestamp"]
     try:
-      Message.get(Message.message_id == message_id)
+      db_message = MessageCache.get(MessageCache.message_id == message_id)
       return
     except DoesNotExist:
-      db_message = Message.create(message_id=message_id)
+      db_message = MessageCache.create(message_id=message_id, last_updated=timestamp)
       db_message.save()
 
     message_type = message["type"]
@@ -205,6 +229,11 @@ def parse(filename):
         raise ValueError("Error parsing file '%s' on line %s. Text '%s' is "
             " not valid JSON" % (filename, line_number, message), e)
 
-      chat.process(json_message)
+      chat.pre_process(json_message, message)
+
+  messages = Message.select().order_by(Message.last_updated)
+  for message in messages:
+    json_message = json.loads(message.content)
+    chat.process(message)
 
   return chat

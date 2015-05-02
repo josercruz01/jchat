@@ -1,12 +1,19 @@
 import migrate_database
 import jchat
+import json
 import random
 import unittest
+
+class MockMessage(object):
+    def __init__(self, data, message_id, timestamp):
+        self.content = json.dumps(data)
+        self.message_id = message_id
+        self.last_updated = timestamp
 
 # Creates an operator online/offline message for testing.
 def create_status_message(msg_id, site_id, operator, status, ts = None):
   timestamp = random.randint(1,15) if not ts else ts
-  return {
+  data = {
       "id": str(msg_id),
       "site_id": site_id,
       "type": jchat.MSG_TYPE_SITE,
@@ -16,10 +23,11 @@ def create_status_message(msg_id, site_id, operator, status, ts = None):
       },
       "timestamp": timestamp,
   }
+  return MockMessage(data, msg_id, timestamp)
 
 def create_user_message(msg_id, site_id, operator, message, ts = None):
   timestamp = random.randint(1,15) if not ts else ts
-  return {
+  data = {
       "id": str(msg_id),
       "site_id": site_id,
       "type": jchat.MSG_TYPE_MESSAGE,
@@ -29,6 +37,7 @@ def create_user_message(msg_id, site_id, operator, message, ts = None):
       },
       "timestamp": timestamp
   }
+  return MockMessage(data, msg_id, timestamp)
 
 class JChatTest(unittest.TestCase):
 

@@ -1,7 +1,7 @@
 import jchat
 import os
 
-TABLES = [jchat.Site, jchat.Visitor, jchat.Operator, jchat.Message]
+TABLES = [jchat.Site, jchat.Visitor, jchat.Operator, jchat.Message, jchat.MessageCache]
 def cleanup():
   for table in TABLES:
     table.drop_table(fail_silently=True)
