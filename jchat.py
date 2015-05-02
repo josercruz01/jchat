@@ -39,6 +39,15 @@ class Site(object):
     self.visitors = 0
     self.last_updated = 0
 
+  # Returns true if at least one operator is online for the site.
+  def is_online(self):
+    for o in self.operators:
+      if o.status == STATUS_TYPE_ONLINE:
+        return True
+
+    return False
+
+  # Return the total operators connected to the site.
   def total_operators(self):
     return len(self.operators)
 
@@ -79,7 +88,24 @@ class JChat(object):
   # Sends a message to the site if the site is online or sends an email
   # to the site othersise.
   def _process_message(self, message):
-    pass
+    site_id = message["site_id"]
+    user_id = message["from"]
+    timestamp = message["timestamp"]
+    text = message["data"]["message"]
+
+    site = None
+    if site_id in self.sites:
+      site = self.sites[site_id]
+    else:
+      site = Site(site_id)
+      self.sites[site_id] = site
+
+    site.last_updated = timestamp
+    site.visitors += 1
+    if site.is_online():
+      site.messages += 1
+    else:
+      site.emails +=1
 
   # Marks a site as online/offline based on the message data.
   def _process_status(self, message):
@@ -90,13 +116,17 @@ class JChat(object):
     operator = Operator(operator_id, status)
     operator.last_updated = timestamp
 
-    site = Site(site_id)
+    site = None
+    if site_id in self.sites:
+      site = self.sites[site_id]
+    else:
+      site = Site(site_id)
+      self.sites[site_id] = site
     site.last_updated = timestamp
     site.operators[operator_id] = operator
-    self.sites[site_id] = site
 
   def get_site(self, site_id):
-    return self.sites[site_id]
+    return self.sites.get(site_id)
 
   def total_sites(self):
     return len(self.sites)
