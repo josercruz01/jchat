@@ -59,6 +59,15 @@ class Site(object):
   def get_operator(self, operator_id):
     return self.operators[operator_id]
 
+  def __str__(self):
+    return "%s,messages=%s,emails=%s,operators=%s,visitors=%s" % (
+        self.site_id,
+        self.messages,
+        self.emails,
+        self.total_operators(),
+        self.total_visitors(),
+        )
+
 # Represents the state of the current chat.
 #
 # Attributes:
@@ -69,8 +78,9 @@ class JChat(object):
     self.sites = {}
     self.messages_cache = {}
 
-  def __str__(self):
-    return "Number of sites= " + str(len(self.sites))
+  def print_all(self):
+    for site in sorted(self.sites):
+      print str(site)
 
   # Processes a message. Depending on the type it either sends
   # the message to the site if the site is online or sends

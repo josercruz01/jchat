@@ -129,5 +129,14 @@ class JChatTest(unittest.TestCase):
     self.assertEqual(site.emails, 0)
     self.assertEqual(site.messages, 1)
 
+  def test_site_prints_correctly(self):
+    site = jchat.Site("123")
+    site.visitors = {"1": True, "2": True}
+    site.operators = {"1": jchat.Operator("1", jchat.STATUS_TYPE_ONLINE)}
+    site.emails = 50
+    site.messages = 100
+    self.assertEqual(str(site),
+        "123,messages=100,emails=50,operators=1,visitors=2")
+
 if __name__ == '__main__':
   unittest.main()
