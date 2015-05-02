@@ -107,6 +107,7 @@ class JChatTest(unittest.TestCase):
     site = chat.get_site("site123")
     self.assertEqual(site.total_operators(), 0)
     self.assertEqual(site.visitors, 1)
+    self.assertEqual(site.emails, 1)
 
 if __name__ == '__main__':
   unittest.main()
