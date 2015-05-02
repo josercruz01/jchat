@@ -11,8 +11,8 @@ class JChatTest(unittest.TestCase):
     }
     chat._process_status(message)
     self.assertEqual(len(chat.sites), 1)
-    site = chat.sites[0]
-    self.assertEqual(site.site_id, '123')
+    site = chat.sites["123"]
+    self.assertIsNotNone(site)
 
 if __name__ == '__main__':
   unittest.main()

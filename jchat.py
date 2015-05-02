@@ -10,16 +10,16 @@ MSG_TYPE_MESSAGE = "message"
 #   site_id: ID that represents the site.
 #   messages: Number of messages sent to the site.
 #   emails: Number of emails sent to the site.
-#   operators: Number online operators of this site.
+#   operators: List of online operators of this site.
 #   visitors: Number visitors of this site.
 class Site(object):
 
-  def __init__(self):
-    self.site_id
-    self.messages
-    self.emails
-    self.operators
-    self.visitors
+  def __init__(self, site_id):
+    self.site_id = site_id
+    self.messages = 0
+    self.emails = 0
+    self.operators = {}
+    self.visitors = 0
 
 # Represents the state of the current chat.
 #
@@ -28,7 +28,7 @@ class Site(object):
 class JChat(object):
 
   def __init__(self):
-    self.sites = []
+    self.sites = {}
 
   def __str__(self):
     return "Number of sites= " + str(len(self.sites))
@@ -52,7 +52,9 @@ class JChat(object):
 
   # Marks a site as online/offline based on the message data.
   def _process_status(self, message):
-    pass
+    site_id = message["site_id"]
+    site = Site(site_id)
+    self.sites[site_id] = site
 
 
 # Parses an input file containing a list of JSON files that
