@@ -99,15 +99,35 @@ class JChatTest(unittest.TestCase):
 
   def test_process_user_message_with_site_offline(self):
     chat = jchat.JChat()
-    message = create_user_message(1, "site123", "v1", jchat.STATUS_TYPE_ONLINE)
+    message = create_user_message(1, "site123", "v1", "hello")
+    message2 = create_user_message(2, "site123", "v1", "hello2")
     chat.process(message)
+    chat.process(message2)
 
     self.assertEqual(chat.total_sites(), 1)
 
     site = chat.get_site("site123")
     self.assertEqual(site.total_operators(), 0)
-    self.assertEqual(site.visitors, 1)
-    self.assertEqual(site.emails, 1)
+    self.assertEqual(site.total_visitors(), 1)
+    self.assertEqual(site.emails, 2)
+    self.assertEqual(site.messages, 0)
+
+  def test_process_user_message_with_site_online(self):
+    chat = jchat.JChat()
+    op1_online = create_status_message(1, "site123", "op1", 
+        jchat.STATUS_TYPE_ONLINE, 1)
+    message = create_user_message(1, "site123", "v1", "hello")
+
+    chat.process(op1_online)
+    chat.process(message)
+
+    self.assertEqual(chat.total_sites(), 1)
+
+    site = chat.get_site("site123")
+    self.assertEqual(site.total_operators(), 1)
+    self.assertEqual(site.total_visitors(), 1)
+    self.assertEqual(site.emails, 0)
+    self.assertEqual(site.messages, 1)
 
 if __name__ == '__main__':
   unittest.main()

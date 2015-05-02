@@ -36,7 +36,7 @@ class Site(object):
     self.messages = 0
     self.emails = 0
     self.operators = {}
-    self.visitors = 0
+    self.visitors = {}
     self.last_updated = 0
 
   # Returns true if at least one operator is online for the site.
@@ -46,6 +46,10 @@ class Site(object):
         return True
 
     return False
+
+  # Return the total visitors connected to the site.
+  def total_visitors(self):
+    return len(self.visitors)
 
   # Return the total operators connected to the site.
   def total_operators(self):
@@ -85,23 +89,23 @@ class JChat(object):
     else:
       raise ValueError("Message type '%s' is not valid." % (message_type,))
 
-  # Sends a message to the site if the site is online or sends an email
-  # to the site othersise.
-  def _process_message(self, message):
-    site_id = message["site_id"]
-    user_id = message["from"]
-    timestamp = message["timestamp"]
-    text = message["data"]["message"]
-
-    site = None
+  # Returns or creates a site.
+  def _get_or_create_site(self, site_id):
     if site_id in self.sites:
-      site = self.sites[site_id]
+      return self.sites[site_id]
     else:
       site = Site(site_id)
       self.sites[site_id] = site
+      return site
 
-    site.last_updated = timestamp
-    site.visitors += 1
+  # Sends a message to the site if the site is online or sends an email
+  # to the site othersise.
+  def _process_message(self, message):
+    site = self._get_or_create_site(message["site_id"])
+
+    site.last_updated = message["timestamp"]
+    site.visitors[message["from"]] = True
+
     if site.is_online():
       site.messages += 1
     else:
@@ -109,20 +113,16 @@ class JChat(object):
 
   # Marks a site as online/offline based on the message data.
   def _process_status(self, message):
-    site_id = message["site_id"]
-    operator_id = message["from"]
     timestamp = message["timestamp"]
-    status = message["data"]["status"]
-    operator = Operator(operator_id, status)
+
+    site = self._get_or_create_site(message["site_id"])
+    site.last_updated = timestamp
+
+    # Create operator.
+    operator_id = message["from"]
+    operator = Operator(operator_id, message["data"]["status"])
     operator.last_updated = timestamp
 
-    site = None
-    if site_id in self.sites:
-      site = self.sites[site_id]
-    else:
-      site = Site(site_id)
-      self.sites[site_id] = site
-    site.last_updated = timestamp
     site.operators[operator_id] = operator
 
   def get_site(self, site_id):
