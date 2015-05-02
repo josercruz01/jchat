@@ -56,6 +56,12 @@ class JChat(object):
     site = Site(site_id)
     self.sites[site_id] = site
 
+  def get_site(self, site_id):
+    return self.sites[site_id]
+
+  def total_sites(self):
+    return len(self.sites)
+
 
 # Parses an input file containing a list of JSON files that
 # represent a message from either a site coming online or a client

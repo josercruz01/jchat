@@ -10,8 +10,8 @@ class JChatTest(unittest.TestCase):
         "type": jchat.MSG_TYPE_SITE,
     }
     chat._process_status(message)
-    self.assertEqual(len(chat.sites), 1)
-    site = chat.sites["123"]
+    self.assertEqual(chat.total_sites(), 1)
+    site = chat.get_site("123")
     self.assertIsNotNone(site)
 
 if __name__ == '__main__':
