@@ -11,12 +11,14 @@ STATUS_TYPE_OFFLINE = "offline"
 #
 # Attributes:
 #   operator_id: The id of this operator.
-#   status: Wether the operator is online or offline.
+#   status: Whether the operator is online or offline.
+#   last_updated: The timestamp of the message that last touched this object.
 class Operator(object):
 
   def __init__(self, operator_id, status):
     self.operator_id = operator_id
     self.status = status
+    self.last_updated = 0
 
 # Represents a site.
 #
@@ -26,6 +28,7 @@ class Operator(object):
 #   emails: Number of emails sent to the site.
 #   operators: List of online operators of this site.
 #   visitors: Number visitors of this site.
+#   last_updated: The timestamp of the message that last touched this object.
 class Site(object):
 
   def __init__(self, site_id):
@@ -34,6 +37,10 @@ class Site(object):
     self.emails = 0
     self.operators = {}
     self.visitors = 0
+    self.last_updated = 0
+
+  def total_operators(self):
+    return len(self.operators)
 
   # Returns an operator associated with the operator id.
   def get_operator(self, operator_id):
@@ -47,6 +54,7 @@ class JChat(object):
 
   def __init__(self):
     self.sites = {}
+    self.messages_cache = {}
 
   def __str__(self):
     return "Number of sites= " + str(len(self.sites))
@@ -55,6 +63,11 @@ class JChat(object):
   # the message to the site if the site is online or sends
   # an email otherwise.
   def process(self, message):
+    message_id = message["id"]
+    if message_id in self.messages_cache:
+      return
+
+    self.messages_cache[message_id] = True
     message_type = message["type"]
     if message_type == MSG_TYPE_SITE:
       self._process_status(message)
@@ -72,10 +85,13 @@ class JChat(object):
   def _process_status(self, message):
     site_id = message["site_id"]
     operator_id = message["from"]
+    timestamp = message["timestamp"]
     status = message["data"]["status"]
     operator = Operator(operator_id, status)
+    operator.last_updated = timestamp
 
     site = Site(site_id)
+    site.last_updated = timestamp
     site.operators[operator_id] = operator
     self.sites[site_id] = site
 
