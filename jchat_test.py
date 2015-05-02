@@ -116,7 +116,7 @@ class JChatTest(unittest.TestCase):
     chat = jchat.JChat()
     op1_online = create_status_message(1, "site123", "op1", 
         jchat.STATUS_TYPE_ONLINE, 1)
-    message = create_user_message(1, "site123", "v1", "hello")
+    message = create_user_message(2, "site123", "v1", "hello")
 
     chat.process(op1_online)
     chat.process(message)

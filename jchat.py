@@ -27,7 +27,7 @@ class Operator(object):
 #   messages: Number of messages sent to the site.
 #   emails: Number of emails sent to the site.
 #   operators: List of online operators of this site.
-#   visitors: Number visitors of this site.
+#   visitors: List of visitors of this site.
 #   last_updated: The timestamp of the message that last touched this object.
 class Site(object):
 
@@ -41,8 +41,8 @@ class Site(object):
 
   # Returns true if at least one operator is online for the site.
   def is_online(self):
-    for o in self.operators:
-      if o.status == STATUS_TYPE_ONLINE:
+    for key, op in self.operators.iteritems():
+      if op.status == STATUS_TYPE_ONLINE:
         return True
 
     return False
