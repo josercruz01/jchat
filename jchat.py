@@ -130,6 +130,8 @@ def process_messages(pool):
     pool.apply_async(process_single_site, args=(site_id,))
 
 def print_all_output():
-  for site_id in r.zrange("site_ids", 0, -1):
+  sites = [str(x) for x in r.zrange("site_ids", 0, -1)]
+  sites.sort()
+  for site_id in sites:
     print_site(site_id)
 
