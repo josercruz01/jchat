@@ -20,8 +20,9 @@ def main():
     usage()
     exit(0)
 
-  chat = jchat.parse(input_file)
-  chat.print_all()
+  jchat.read_messages(input_file) 
+  jchat.process_messages()
+  jchat.print_all_output()
 
 if __name__ == "__main__":
   main()
